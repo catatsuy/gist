@@ -63,6 +63,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	defer res.Body.Close()
+
 	if res.StatusCode != http.StatusCreated {
 		log.Fatal(string(body))
 	}
