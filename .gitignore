@@ -14,3 +14,5 @@
 .glide/
 
 gist
+gist-darwin-amd64.tar.gz
+gist-linux-amd64.tar.gz
