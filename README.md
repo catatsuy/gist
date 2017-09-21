@@ -16,3 +16,6 @@ cat main.go | gist
 gist main.go
 ```
 
+## Docs
+
+  * https://developer.github.com/v3/gists/#create-a-gist
