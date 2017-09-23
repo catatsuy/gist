@@ -21,22 +21,21 @@ type gist struct {
 }
 
 func main() {
-	var fileName string
-
 	files := make(map[string]gistContent)
 
 	if len(os.Args) > 1 {
-		fileName = os.Args[1]
-		f, err := os.Open(fileName)
-		if err != nil {
-			log.Fatal(err)
-		}
-		b, err := ioutil.ReadAll(f)
-		if err != nil {
-			log.Fatal(err)
-		}
+		for _, fileName := range os.Args[1:] {
+			f, err := os.Open(fileName)
+			if err != nil {
+				log.Fatal(err)
+			}
+			b, err := ioutil.ReadAll(f)
+			if err != nil {
+				log.Fatal(err)
+			}
 
-		files[fileName] = gistContent{Content: string(b)}
+			files[fileName] = gistContent{Content: string(b)}
+		}
 	} else {
 		// 標準入力を待つ
 		b, err := ioutil.ReadAll(os.Stdin)
