@@ -21,8 +21,9 @@ type gist struct {
 }
 
 func main() {
-	var content string
 	var fileName string
+
+	files := make(map[string]gistContent)
 
 	if len(os.Args) > 1 {
 		fileName = os.Args[1]
@@ -35,20 +36,20 @@ func main() {
 			log.Fatal(err)
 		}
 
-		content = string(b)
+		files[fileName] = gistContent{Content: string(b)}
 	} else {
 		// 標準入力を待つ
 		b, err := ioutil.ReadAll(os.Stdin)
 		if err != nil {
 			log.Fatal(err)
 		}
-		content = string(b)
+		files[""] = gistContent{Content: string(b)}
 	}
 
 	jsonObj := &gist{
 		Description: "",
 		Public:      false,
-		Files:       map[string]gistContent{fileName: gistContent{Content: content}},
+		Files:       files,
 	}
 
 	b, _ := json.Marshal(jsonObj)
