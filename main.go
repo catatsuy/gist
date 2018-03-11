@@ -1,24 +1,15 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
+
+	"github.com/google/go-github/github"
+	"golang.org/x/oauth2"
 )
-
-type gistContent struct {
-	Content string `json:"content"`
-}
-
-type gist struct {
-	Description string                 `json:"description"`
-	Public      bool                   `json:"public"`
-	Files       map[string]gistContent `json:"files"`
-}
 
 const (
 	ExitCodeOK    = 0
@@ -35,7 +26,7 @@ func main() {
 }
 
 func (c *CLI) Run(args []string) int {
-	files := make(map[string]gistContent)
+	gist := &github.Gist{Files: make(map[github.GistFilename]github.GistFile)}
 
 	if len(args) > 1 {
 		for _, fileName := range args[1:] {
@@ -50,7 +41,11 @@ func (c *CLI) Run(args []string) int {
 				return ExitCodeError
 			}
 
-			files[fileName] = gistContent{Content: string(b)}
+			bStr := string(b)
+			gist.Files[github.GistFilename(fileName)] = github.GistFile{
+				Filename: &fileName,
+				Content:  &bStr,
+			}
 		}
 	} else {
 		// 標準入力を待つ
@@ -59,45 +54,41 @@ func (c *CLI) Run(args []string) int {
 			fmt.Fprintln(c.errStream, err)
 			return ExitCodeError
 		}
-		files[""] = gistContent{Content: string(b)}
+
+		bStr := string(b)
+		gist.Files[github.GistFilename("")] = github.GistFile{
+			Content: &bStr,
+		}
 	}
 
-	jsonObj := &gist{
-		Description: "",
-		Public:      false,
-		Files:       files,
-	}
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: getToken()},
+	)
+	tc := oauth2.NewClient(ctx, ts)
 
-	b, _ := json.Marshal(jsonObj)
+	client := github.NewClient(tc)
 
-	res, err := http.Post("https://api.github.com/gists", "application/json;charset=utf-8", bytes.NewBuffer(b))
+	gi, _, err := client.Gists.Create(ctx, gist)
+
 	if err != nil {
 		fmt.Fprintln(c.errStream, err)
 		return ExitCodeError
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		fmt.Fprintln(c.errStream, err)
-		return ExitCodeError
-	}
-
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusCreated {
-		fmt.Fprintln(c.errStream, err)
-		return ExitCodeError
-	}
-
-	resj := make(map[string]interface{})
-
-	err = json.Unmarshal(body, &resj)
-	if err != nil {
-		fmt.Fprintln(c.errStream, err)
-		return ExitCodeError
-	}
-
-	fmt.Fprintln(c.outStream, resj["html_url"])
+	fmt.Fprintln(c.outStream, *gi.HTMLURL)
 
 	return ExitCodeOK
+}
+
+func getToken() string {
+	token := os.Getenv("GITHUB_TOKEN")
+
+	if token != "" {
+		return token
+	}
+
+	// TOML
+
+	return ""
 }
