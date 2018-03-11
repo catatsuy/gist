@@ -10,6 +10,8 @@ go get github.com/catatsuy/gist
 
 ## Usage
 
+Set environment variable `GITHUB_TOKEN`.
+
 ```sh
 cat main.go | gist
 
