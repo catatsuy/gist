@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 )
@@ -20,22 +20,34 @@ type gist struct {
 	Files       map[string]gistContent `json:"files"`
 }
 
-func main() {
-	os.Exit(run(os.Args))
+const (
+	ExitCodeOK    = 0
+	ExitCodeError = 1
+)
+
+type CLI struct {
+	outStream, errStream io.Writer
 }
 
-func run(args []string) int {
+func main() {
+	cli := &CLI{outStream: os.Stdout, errStream: os.Stderr}
+	os.Exit(cli.Run(os.Args))
+}
+
+func (c *CLI) Run(args []string) int {
 	files := make(map[string]gistContent)
 
 	if len(args) > 1 {
 		for _, fileName := range args[1:] {
 			f, err := os.Open(fileName)
 			if err != nil {
-				log.Fatal(err)
+				fmt.Fprintln(c.errStream, err)
+				return ExitCodeError
 			}
 			b, err := ioutil.ReadAll(f)
 			if err != nil {
-				log.Fatal(err)
+				fmt.Fprintln(c.errStream, err)
+				return ExitCodeError
 			}
 
 			files[fileName] = gistContent{Content: string(b)}
@@ -44,7 +56,8 @@ func run(args []string) int {
 		// 標準入力を待つ
 		b, err := ioutil.ReadAll(os.Stdin)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(c.errStream, err)
+			return ExitCodeError
 		}
 		files[""] = gistContent{Content: string(b)}
 	}
@@ -59,28 +72,32 @@ func run(args []string) int {
 
 	res, err := http.Post("https://api.github.com/gists", "application/json;charset=utf-8", bytes.NewBuffer(b))
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(c.errStream, err)
+		return ExitCodeError
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(c.errStream, err)
+		return ExitCodeError
 	}
 
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusCreated {
-		log.Fatal(string(body))
+		fmt.Fprintln(c.errStream, err)
+		return ExitCodeError
 	}
 
 	resj := make(map[string]interface{})
 
 	err = json.Unmarshal(body, &resj)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(c.errStream, err)
+		return ExitCodeError
 	}
 
-	fmt.Println(resj["html_url"])
+	fmt.Fprintln(c.outStream, resj["html_url"])
 
-	return 0
+	return ExitCodeOK
 }
