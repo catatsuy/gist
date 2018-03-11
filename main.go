@@ -21,10 +21,14 @@ type gist struct {
 }
 
 func main() {
+	os.Exit(run(os.Args))
+}
+
+func run(args []string) int {
 	files := make(map[string]gistContent)
 
-	if len(os.Args) > 1 {
-		for _, fileName := range os.Args[1:] {
+	if len(args) > 1 {
+		for _, fileName := range args[1:] {
 			f, err := os.Open(fileName)
 			if err != nil {
 				log.Fatal(err)
@@ -77,4 +81,6 @@ func main() {
 	}
 
 	fmt.Println(resj["html_url"])
+
+	return 0
 }
